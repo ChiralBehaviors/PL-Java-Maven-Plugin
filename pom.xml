@@ -6,13 +6,9 @@
 	<version>0.0.1-SNAPSHOT</version>
 	<name>PL/JAVA Maven Plugin</name>
 	<description>A Maven plugin to load pl/java jar files</description>
+	<packaging>maven-plugin</packaging>
 
 	<dependencies>
-		<dependency>
-			<groupId>org.apache.maven</groupId>
-			<artifactId>maven-plugin-api</artifactId>
-			<version>2.2.1</version>
-		</dependency>
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
@@ -33,6 +29,11 @@
 			<version>1.8.5</version>
 			<type>jar</type>
 			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.maven</groupId>
+			<artifactId>maven-plugin-api</artifactId>
+			<version>3.0.4</version>
 		</dependency>
 	</dependencies>
 	<build>
