@@ -25,6 +25,7 @@ import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -218,15 +219,20 @@ public class PlJavaLoader extends AbstractMojo {
         }
     }
 
-    private void drop(PreparedStatement drop, String name) throws SQLException {
+    private void drop(PreparedStatement drop, String name,
+                      PreparedStatement validate) throws SQLException,
+                                                 MojoExecutionException {
         getLog().info(String.format("dropping jar %s", name));
         drop.setString(1, name);
         drop.setBoolean(2, false);
-        try {
-            drop.execute();
-        } catch (SQLException e) {
-            getLog().debug(String.format("dropping %s : %s", name,
-                                         e.getMessage()));
+        drop.execute();
+
+        validate.setString(1, name);
+        ResultSet result = validate.executeQuery();
+        if (result.next()) {
+            throw new MojoExecutionException(
+                                             String.format("Did not actually drop %s",
+                                                           name));
         }
     }
 
@@ -285,8 +291,10 @@ public class PlJavaLoader extends AbstractMojo {
      * @throws SQLException
      * @throws IOException
      * @throws MojoFailureException
+     * @throws MojoExecutionException
      */
-    private void load() throws SQLException, IOException, MojoFailureException {
+    private void load() throws SQLException, IOException, MojoFailureException,
+                       MojoExecutionException {
         try {
             getLog().info(String.format("using driver %s, url: %s",
                                         Class.forName("org.postgresql.Driver"),
@@ -299,6 +307,7 @@ public class PlJavaLoader extends AbstractMojo {
         connection.setAutoCommit(true);
         PreparedStatement drop = connection.prepareStatement("SELECT sqlj.remove_jar(?, ?)");
         PreparedStatement load = connection.prepareStatement("SELECT sqlj.install_jar(?, ?, ?)");
+        PreparedStatement validate = connection.prepareStatement("SELECT jarid from sqlj.jar_repository where jarname=?");
 
         @SuppressWarnings("unchecked")
         Set<Artifact> artifacts = project.getArtifacts();
@@ -314,7 +323,7 @@ public class PlJavaLoader extends AbstractMojo {
         String classpath = null;
         for (Artifact artifact : artifacts) {
             String name = generateName(artifact);
-            drop(drop, name);
+            drop(drop, name, validate);
             getLog().info(String.format("loading artifact %s, name: %s file: %s",
                                         artifact, name, artifact.getFile()));
             load(load, artifact.getFile(), name);
@@ -337,11 +346,7 @@ public class PlJavaLoader extends AbstractMojo {
         load.setBytes(1, bytes);
         load.setString(2, name);
         load.setBoolean(3, true);
-        if (!load.execute()) {
-            throw new MojoFailureException(
-                                           String.format("Unable to load jar %s %s",
-                                                         name, file));
-        }
+        load.execute();
     }
 
     protected Artifact resolveArtifact(Resource exclusion) {
