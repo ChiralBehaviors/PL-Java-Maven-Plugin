@@ -222,17 +222,19 @@ public class PlJavaLoader extends AbstractMojo {
     private void drop(PreparedStatement drop, String name,
                       PreparedStatement validate) throws SQLException,
                                                  MojoExecutionException {
-        getLog().info(String.format("dropping jar %s", name));
-        drop.setString(1, name);
-        drop.setBoolean(2, false);
-        drop.execute();
-
         validate.setString(1, name);
         ResultSet result = validate.executeQuery();
         if (result.next()) {
-            throw new MojoExecutionException(
-                                             String.format("Did not actually drop %s",
-                                                           name));
+            getLog().info(String.format("dropping jar %s", name));
+            drop.setString(1, name);
+            drop.setBoolean(2, false);
+            drop.execute();
+            result = validate.executeQuery();
+            if (result.next()) {
+                throw new MojoExecutionException(
+                                                 String.format("Did not actually drop %s",
+                                                               name));
+            }
         }
     }
 
